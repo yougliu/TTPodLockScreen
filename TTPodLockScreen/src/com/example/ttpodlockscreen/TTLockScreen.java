@@ -4,7 +4,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Handler;
 import android.util.DisplayMetrics;
@@ -21,7 +23,9 @@ public class TTLockScreen extends AbsLockScreen{
 	
 	private static final String TAG = "TTLockScreen";
 	public static final String PACKAGE_NAME = "com.example.ttpodlockscreen";
-	private static final int MSG_MOVE =0x00; 
+	private static final int MSG_MOVE =0x00;
+	private static final int WATERWAVE_START = 0X01;
+	private static final int MAX_ALPHA_VALUE = 255; 
 	private Context mContext;
 	private Activity mActivity;
 	private RelativeLayout view;
@@ -29,18 +33,22 @@ public class TTLockScreen extends AbsLockScreen{
 	private WidgetForRotateDayMMDDEE mUnLockDate;
 	private WidgetForRotateTimeText mUnLockTime;
 	private Point mTouchPoint = new Point();
+	//添加点击波纹动画
+	private int alpha = 0,radius = 0;
+	private float waterWidth = 5;
 	
 	public TTLockScreen(Context context,Activity activity) {
 		super(context);
 		this.mContext = context;
 		this.mActivity = activity;
+		initPaint();
 		try {
 			mResources = context.getPackageManager().getResourcesForApplication(PACKAGE_NAME);
 		} catch (NameNotFoundException e) {
 			e.printStackTrace();
 		}
 		view = (RelativeLayout) LayoutInflater.from(context).inflate(R.layout.lockscreen, null);
-		setBackgroundResource(R.drawable.wallpaper_2);
+		setBackgroundResource(R.drawable.default_lock);
 		DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
 		screenHeight = displayMetrics.heightPixels;
 		screenWidth = displayMetrics.widthPixels;
@@ -65,6 +73,22 @@ public class TTLockScreen extends AbsLockScreen{
 		this.addView(view);
 	}
 	
+	private void initPaint() {
+		waterWavePaint = new Paint();
+		waterWavePaint.setAntiAlias(true);
+		waterWavePaint.setStrokeWidth(waterWidth);
+		//设置是环形方式绘制
+		waterWavePaint.setStyle(Paint.Style.STROKE);
+		waterWavePaint.setAlpha(alpha);
+		waterWavePaint.setColor(Color.RED);
+	}
+	
+	@Override
+	protected void onDraw(Canvas canvas) {
+		super.onDraw(canvas);
+		canvas.drawCircle(mTouchPoint.x, mTouchPoint.y, radius, waterWavePaint);
+	}
+
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
 		Point point = new Point();
@@ -75,6 +99,9 @@ public class TTLockScreen extends AbsLockScreen{
 			mTouchPoint.x = point.x;
 			mTouchPoint.y = point.y;
 			Log.d(TAG, "mTouchPoint.x = "+mTouchPoint.x+" mTouchPoint.y = "+mTouchPoint.y);
+			radius = 0;
+			alpha = MAX_ALPHA_VALUE;
+			mHandler.sendEmptyMessage(WATERWAVE_START);
 			break;
 			
 		case MotionEvent.ACTION_MOVE:
@@ -86,10 +113,7 @@ public class TTLockScreen extends AbsLockScreen{
 			int distanceY = point.y - mTouchPoint.y;
 			Log.d(TAG, "point.x = "+point.x+" point.y = "+point.y);
 			if(distanceX > screenWidth/3 || distanceY > screenHeight/3){
-				Toast.makeText(getContext(), "解锁", 0).show();
 				mActivity.finish();
-			}else{
-				Toast.makeText(getContext(), "no解锁", 0).show();
 			}
 			break;
 		default:
@@ -104,6 +128,15 @@ public class TTLockScreen extends AbsLockScreen{
 			case MSG_MOVE:
 				
 				break;
+				
+			case WATERWAVE_START:
+				//刷新状态
+				flushState();
+				invalidate();
+				if(alpha > 0){
+					mHandler.sendEmptyMessageDelayed(WATERWAVE_START, 50);
+				}
+				break;
 
 			default:
 				break;
@@ -112,12 +145,24 @@ public class TTLockScreen extends AbsLockScreen{
 	};
 	private int screenHeight;
 	private int screenWidth;
+	private Paint waterWavePaint;
 
 	@Override
 	public void onRefreshBatteryInfo(boolean showBatteryInfo,
 			boolean pluggedIn, int batteryLevel) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	protected void flushState() {
+		radius += 5;
+		alpha -= 5;
+		if(alpha < 0 ){
+			alpha = 0;
+		}
+		waterWidth -= 0.05;
+		waterWavePaint.setAlpha(alpha);
+		waterWavePaint.setStrokeWidth(waterWidth);
 	}
 
 	@Override
