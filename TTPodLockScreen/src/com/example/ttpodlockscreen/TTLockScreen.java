@@ -25,7 +25,6 @@ public class TTLockScreen extends AbsLockScreen{
 	private Context mContext;
 	private Activity mActivity;
 	private RelativeLayout view;
-//	private ILockScreenListener mListener;
 	private Resources mResources;
 	private WidgetForRotateDayMMDDEE mUnLockDate;
 	private WidgetForRotateTimeText mUnLockTime;
